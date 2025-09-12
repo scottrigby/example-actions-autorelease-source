@@ -48,9 +48,10 @@ jobs:
           COMMIT_SHA=$(git log --format="%H %s" "origin/${{ github.event.client_payload.pr_base_ref }}" | grep "^[a-f0-9]\{40\} Prepare release $VERSION$" | head -1 | cut -d' ' -f1)
           echo "Cherry-picking version commit $COMMIT_SHA"
 
-          # Check if commit is already on this branch
-          if git merge-base --is-ancestor "$COMMIT_SHA" HEAD; then
-            echo "Commit $COMMIT_SHA is already present on release branch, skipping cherry-pick"
+          # Check if this version is already in version.json on the release branch
+          CURRENT_VERSION=$(jq -r '.version' version.json)
+          if [[ "$CURRENT_VERSION" == "$VERSION" ]]; then
+            echo "Version $VERSION is already present on release branch, skipping cherry-pick"
           else
             # Cherry-pick using 'theirs' strategy to resolve conflicts by taking the new version
             git cherry-pick --strategy-option theirs "$COMMIT_SHA"
