@@ -43,7 +43,7 @@ jobs:
 
       - name: Cherry-pick version commit
         run: |
-          COMMIT_SHA="${{ github.event.client_payload.merge_commit_sha }}"
+          COMMIT_SHA="${{ github.event.client_payload.version_commit_sha }}"
           git cherry-pick "$COMMIT_SHA"
           git push origin "${{ steps.version.outputs.release_branch }}"
 
