@@ -57,7 +57,12 @@ jobs:
           echo "branch=$BRANCH" >> $GITHUB_ENV
 
       - name: Update version
-        run: ./scripts/update-version.sh "${{ inputs.version }}"
+        run: |
+          VERSION="${{ inputs.version }}"
+          BUILD_DATE=$(date +%Y-%m-%d)
+          jq --arg version "$VERSION" --arg build "$BUILD_DATE" '.version = $version | .build = $build' version.json > version.json.tmp
+          mv version.json.tmp version.json
+          echo "Version updated to $VERSION"
 
       - name: Commit and push
         run: |
