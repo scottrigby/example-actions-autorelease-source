@@ -38,23 +38,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create or checkout release branch
+      - name: Create temporary preparation branch
         run: |
           VERSION="${{ inputs.version }}"
-          MAJOR=$(echo "$VERSION" | cut -d. -f1 | sed 's/v//')
-          MINOR=$(echo "$VERSION" | cut -d. -f2)
-          BRANCH="release-$MAJOR.$MINOR"
-
-          if git show-ref --verify --quiet refs/remotes/origin/"$BRANCH"; then
-            echo "Branch $BRANCH exists, checking it out"
-            git checkout "$BRANCH"
-          else
-            echo "Branch $BRANCH does not exist, creating from ${{ steps.base.outputs.base_branch }}"
-            git checkout -b "$BRANCH"
-            git push -u origin "$BRANCH"
-          fi
-
-          echo "branch=$BRANCH" >> $GITHUB_ENV
+          TEMP_BRANCH="prepare-$VERSION"
+          git checkout -b "$TEMP_BRANCH"
+          echo "branch=$TEMP_BRANCH" >> $GITHUB_ENV
 
       - name: Update version
         run: |

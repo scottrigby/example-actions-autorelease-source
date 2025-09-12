@@ -13,24 +13,45 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Extract version and checkout release branch
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Extract version and setup release branch
         id: version
         run: |
           TITLE="${{ github.event.pull_request.title }}"
           VERSION=$(echo "$TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
           MAJOR=$(echo "$VERSION" | cut -d. -f1 | sed 's/v//')
           MINOR=$(echo "$VERSION" | cut -d. -f2)
-          BRANCH="release-$MAJOR.$MINOR"
+          RELEASE_BRANCH="release-$MAJOR.$MINOR"
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
 
-          git checkout "$BRANCH"
+          # Create release branch if it doesn't exist
+          if ! git show-ref --verify --quiet refs/remotes/origin/"$RELEASE_BRANCH"; then
+            echo "Creating release branch $RELEASE_BRANCH"
+            git checkout -b "$RELEASE_BRANCH" "${{ github.event.pull_request.base.ref }}"
+            git push -u origin "$RELEASE_BRANCH"
+          else
+            echo "Release branch $RELEASE_BRANCH already exists"
+            git checkout "$RELEASE_BRANCH"
+          fi
+
+      - name: Cherry-pick version commit
+        run: |
+          COMMIT_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          git cherry-pick "$COMMIT_SHA"
+          git push origin "${{ steps.version.outputs.release_branch }}"
 
       - name: Create tag and release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           git tag "${{ steps.version.outputs.version }}"
           git push origin "${{ steps.version.outputs.version }}"
