@@ -47,7 +47,10 @@ jobs:
           # Find the actual commit (not merge commit) with exact subject line
           COMMIT_SHA=$(git log --format="%H %s" "origin/${{ github.event.client_payload.pr_base_ref }}" | grep "^[a-f0-9]\{40\} Prepare release $VERSION$" | head -1 | cut -d' ' -f1)
           echo "Cherry-picking version commit $COMMIT_SHA"
-          git cherry-pick "$COMMIT_SHA"
+
+          # Cherry-pick using 'theirs' strategy to resolve conflicts by taking the new version
+          git cherry-pick --strategy-option theirs "$COMMIT_SHA"
+
           git push origin "${{ steps.version.outputs.release_branch }}"
 
       - name: Create tag and release
