@@ -34,7 +34,7 @@ jobs:
           # Create release branch if it doesn't exist
           if ! git show-ref --verify --quiet refs/remotes/origin/"$RELEASE_BRANCH"; then
             echo "Creating release branch $RELEASE_BRANCH"
-            git checkout -b "$RELEASE_BRANCH" "${{ github.event.client_payload.pr_base_ref }}"
+            git checkout -b "$RELEASE_BRANCH" "origin/${{ github.event.client_payload.pr_base_ref }}"
             git push -u origin "$RELEASE_BRANCH"
           else
             echo "Release branch $RELEASE_BRANCH already exists"
