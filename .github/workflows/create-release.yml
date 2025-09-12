@@ -14,12 +14,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version
+      - name: Extract version and checkout release branch
         id: version
         run: |
           TITLE="${{ github.event.pull_request.title }}"
           VERSION=$(echo "$TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1 | sed 's/v//')
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          BRANCH="release-$MAJOR.$MINOR"
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+          git checkout "$BRANCH"
 
       - name: Create tag and release
         env:
