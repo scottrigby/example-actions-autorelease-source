@@ -44,7 +44,8 @@ jobs:
       - name: Cherry-pick version commit
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          COMMIT_SHA=$(git log --grep="Prepare release $VERSION" --format="%H" -1 "origin/${{ github.event.client_payload.pr_base_ref }}")
+          # Find the actual commit (not merge commit) with exact subject line
+          COMMIT_SHA=$(git log --format="%H %s" "origin/${{ github.event.client_payload.pr_base_ref }}" | grep "^[a-f0-9]\{40\} Prepare release $VERSION$" | head -1 | cut -d' ' -f1)
           git cherry-pick "$COMMIT_SHA"
           git push origin "${{ steps.version.outputs.release_branch }}"
 
