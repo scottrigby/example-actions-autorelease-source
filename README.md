@@ -4,7 +4,7 @@ Test repository for automated release workflows.
 
 ## Usage
 
-Run "Prepare Release" workflow with target version (e.g., v3.2.0)
+Run ["Prepare Release" workflow](https://github.com/scottrigby/example-actions-autorelease-source/actions/workflows/prepare-release.yml) with target version (e.g., v3.2.0)
 
 See [Release Process](https://github.com/scottrigby/example-actions-autorelease-docs/blob/main/docs/release-process.md) for detailed steps.
 
