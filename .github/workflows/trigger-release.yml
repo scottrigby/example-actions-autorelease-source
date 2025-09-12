@@ -1,0 +1,24 @@
+name: Trigger Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main, dev-v3]
+
+jobs:
+  trigger:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.title, 'Prepare release')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger release workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          repository: ${{ github.repository }}
+          event-type: create-release
+          client-payload: |
+            {
+              "pr_title": "${{ github.event.pull_request.title }}",
+              "pr_base_ref": "${{ github.event.pull_request.base.ref }}",
+              "merge_commit_sha": "${{ github.event.pull_request.merge_commit_sha }}"
+            }
