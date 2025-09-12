@@ -57,8 +57,6 @@ jobs:
         run: |
           git add .
           git commit -s -m "Prepare release ${{ inputs.version }}"
-          COMMIT_SHA=$(git rev-parse HEAD)
-          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_ENV
           git push origin "${{ env.branch }}"
 
       - name: Create PR
@@ -67,6 +65,6 @@ jobs:
         run: |
           gh pr create \
             --title "Prepare release ${{ inputs.version }}" \
-            --body "Automated release preparation for ${{ inputs.version }}\n\nVersion commit: ${{ env.commit_sha }}" \
+            --body "Automated release preparation for ${{ inputs.version }}" \
             --base ${{ steps.base.outputs.base_branch }} \
             --head "${{ env.branch }}"
