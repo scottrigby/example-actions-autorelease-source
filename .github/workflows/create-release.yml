@@ -35,7 +35,7 @@ jobs:
       - name: Trigger docs update
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.DOCS_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN }}
           repository: ${{ github.repository_owner }}/example-actions-autorelease-docs
           event-type: version-released
           client-payload: |

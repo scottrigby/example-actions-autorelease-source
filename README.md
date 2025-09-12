@@ -16,7 +16,7 @@ See [Release Process](https://github.com/scottrigby/example-actions-autorelease-
    - Select "Selected repositories" and add both the example source and docs repos
    - Grant permissions: Contents (Read/Write), Pull requests (Write), Metadata (Read)
 4. [Add token as repository secret](https://github.com/scottrigby/example-actions-autorelease-source/settings/secrets/actions/new):
-   - Create secret named `DOCS_TOKEN` with the token value
+   - Create secret named `RELEASE_TOKEN` with the token value
 
 ## Links
 
