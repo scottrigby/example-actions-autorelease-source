@@ -23,7 +23,7 @@ jobs:
         id: version
         run: |
           TITLE="${{ github.event.client_payload.pr_title }}"
-          VERSION=$(echo "$TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          VERSION=$(echo "$TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?')
           MAJOR=$(echo "$VERSION" | cut -d. -f1 | sed 's/v//')
           MINOR=$(echo "$VERSION" | cut -d. -f2)
           RELEASE_BRANCH="release-$MAJOR.$MINOR"
