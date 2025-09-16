@@ -59,32 +59,40 @@ jobs:
 
           git push origin "${{ steps.version.outputs.release_branch }}"
 
-      - name: Create tag and release
+      - name: Create and sign release artifacts
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          make create-artifacts VERSION="$VERSION"
+          make sign VERSION="$VERSION"
+
+      - name: Create signed tag and draft release
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
-          git tag "${{ steps.version.outputs.version }}"
-          git push origin "${{ steps.version.outputs.version }}"
-
           VERSION="${{ steps.version.outputs.version }}"
+
+          # Create annotated tag
+          git tag --annotate "$VERSION" --message "Release $VERSION"
+          git push origin "$VERSION"
+
+          # Create draft release with artifacts
           if [[ "$VERSION" == *"-"* ]]; then
             gh release create "$VERSION" \
               --title "$VERSION" \
-              --notes "Release $VERSION" \
-              --prerelease
+              --notes "Release $VERSION - Draft for review" \
+              --draft \
+              --prerelease \
+              _dist/app-$VERSION-*
           else
             gh release create "$VERSION" \
               --title "$VERSION" \
-              --notes "Release $VERSION"
+              --notes "Release $VERSION - Draft for review" \
+              --draft \
+              _dist/app-$VERSION-*
           fi
 
-      - name: Trigger docs update
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.RELEASE_TOKEN }}
-          repository: ${{ github.repository_owner }}/example-actions-autorelease-docs
-          event-type: version-released
-          client-payload: |
-            {
-              "version": "${{ steps.version.outputs.version }}"
-            }
+      # Note: Docs update is triggered automatically when release is published via webhook
+      # This ensures human review of draft release before docs automation begins

@@ -1,0 +1,20 @@
+This file contains public GPG keys for verifying release artifacts.
+
+Usage:
+  gpg --import KEYS
+  gpg --verify <signature_file> <artifact>
+
+To add your key:
+  (gpg --list-sigs <your_email> && gpg --armor --export <your_email>) >> KEYS
+
+pub   rsa4096 2024-01-01 [SC]
+      EXAMPLE567890ABCDEF1234567890ABCDEF123456
+uid                      Example Release Bot <bot@example.com>
+sub   rsa4096 2024-01-01 [E]
+
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQINBGWqXYEBEAD_EXAMPLE_PUBLIC_KEY_CONTENT_FOR_DEMONSTRATION_
+PURPOSES_ONLY_NOT_A_REAL_GPG_KEY_REPLACE_WITH_ACTUAL_KEY_DATA
+=DEMO
+-----END PGP PUBLIC KEY BLOCK-----

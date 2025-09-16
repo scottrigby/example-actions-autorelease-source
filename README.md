@@ -1,27 +1,40 @@
-# Example Auto-Release Source
+# Automated Release Example
 
-Test repository for automated release workflows.
+This repository demonstrates automated release workflows with GPG signing and human review gates.
+
+## GitHub Actions Setup
+
+1. **Generate GPG key**: Run `make container-run` then `make generate-gpg-key` inside the container
+2. **Copy private key**: Copy contents of `private-key.asc` to GitHub repository secret `GPG_PRIVATE_KEY`
+3. **Copy passphrase**: Copy contents of `passphrase.txt` to GitHub repository secret `GPG_PASSPHRASE`
+4. **Create release token**: [Fine-grained Personal Access Token](https://github.com/settings/personal-access-tokens/new) with permissions:
+   - Contents: Read/Write
+   - Pull requests: Write
+   - Metadata: Read
+   - Actions: Write
+5. **Add token**: Save token as `RELEASE_TOKEN` repository secret
 
 ## Usage
 
-Run ["Prepare Release" workflow](https://github.com/scottrigby/example-actions-autorelease-source/actions/workflows/prepare-release.yml) with target version (e.g., v3.2.0)
+1. Run ["Prepare Release" workflow](https://github.com/scottrigby/example-actions-autorelease-source/actions/workflows/prepare-release.yml) with target version
+2. Review and merge the generated PR
+3. Review and publish the draft release
+4. Documentation is automatically updated
 
-See [Release Process](https://github.com/scottrigby/example-actions-autorelease-docs/blob/main/docs/release-process.md) for detailed steps.
+## How It Works
 
-## Repo Setup
+- **Human review gates**: All changes require PR approval
+- **GPG signed artifacts**: All releases are cryptographically signed
+- **Draft releases**: Created for review before triggering docs
+- **Cross-repo automation**: Automatically updates documentation
 
-1. Create `dev-v3` branch from main and set version.json to v3.1.0
-2. Update main branch version.json to v4.0.0-alpha.1
-3. Copy `.github/workflows/trigger-release.yml` to the `dev-v3` branch
-4. [Create fine-grained personal access token](https://github.com/settings/personal-access-tokens/new):
-   - Select "Selected repositories" and add both the example source and docs repos
-   - Grant permissions: Contents (Read/Write), Pull requests (Write), Metadata (Read)
-5. Enable automatic head branch deletion:
-   - Go to Settings > General > Pull Requests
-   - Check "Automatically delete head branches"
-6. [Add token as repository secret](https://github.com/scottrigby/example-actions-autorelease-source/settings/secrets/actions/new):
-   - Create secret named `RELEASE_TOKEN` with the token value
+## Available Make Targets
+
+Run `make help` to see all available commands including container-based verification.
+
+**Note:** Only `make container-*` commands are run on the host. All other commands should be run inside the container.
 
 ## Links
 
 - [Documentation Repository](https://github.com/scottrigby/example-actions-autorelease-docs)
+- [Release Process Details](https://github.com/scottrigby/example-actions-autorelease-docs/blob/main/docs/release-process.md)

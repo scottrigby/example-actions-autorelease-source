@@ -1,0 +1,10 @@
+# GPG private key and passphrase - never commit these!
+private-key.asc
+passphrase.txt
+
+# Test artifacts
+_dist/
+
+# Temporary files
+*.tmp
+*.log
