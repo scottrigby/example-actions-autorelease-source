@@ -79,13 +79,13 @@ jobs:
           fi
 
           # Update version on release branch
-          update_version "$RELEASE_BRANCH" "$VERSION"
+          update_version "$RELEASE_BRANCH" "$VERSION" || true
 
           # Update version on source branch
           echo "Updating source branch $BASE_BRANCH"
           git checkout "$BASE_BRANCH"
           git pull origin "$BASE_BRANCH"
-          update_version "$BASE_BRANCH" "$VERSION"
+          update_version "$BASE_BRANCH" "$VERSION" || true
 
           # Switch back to release branch for artifact creation
           git checkout "$RELEASE_BRANCH"
