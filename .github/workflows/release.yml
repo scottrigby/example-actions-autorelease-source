@@ -41,13 +41,34 @@ jobs:
           echo "base_branch=$BASE_BRANCH" >> $GITHUB_OUTPUT
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
 
-      - name: Create or checkout release branch and update version
+      - name: Setup release branch and update versions
         run: |
           VERSION="${{ steps.branches.outputs.version }}"
           RELEASE_BRANCH="${{ steps.branches.outputs.release_branch }}"
           BASE_BRANCH="${{ steps.branches.outputs.base_branch }}"
 
-          # Create or checkout release branch (persistent across patch releases)
+          # Function to update version.json
+          update_version() {
+            local branch="$1"
+            local version="$2"
+            local major_minor=$(echo "$version" | sed 's/^\(v[0-9]*\.[0-9]*\).*/\1/')
+            local current_version=$(jq -r '.version' version.json 2>/dev/null || echo "")
+
+            if [[ "$current_version" != "$major_minor" ]]; then
+              echo "Updating version.json in $branch to $major_minor"
+              jq --arg version "$major_minor" '.version = $version' version.json > version.json.tmp
+              mv version.json.tmp version.json
+              git add version.json
+              git commit -s -m "Prepare release $version"
+              git push origin "$branch"
+              return 0
+            else
+              echo "Version $major_minor already present in $branch"
+              return 1
+            fi
+          }
+
+          # Create or checkout release branch
           if ! git show-ref --verify --quiet refs/remotes/origin/"$RELEASE_BRANCH"; then
             echo "Creating new release branch $RELEASE_BRANCH from $BASE_BRANCH"
             git checkout -b "$RELEASE_BRANCH" origin/"$BASE_BRANCH"
@@ -57,50 +78,18 @@ jobs:
             git checkout "$RELEASE_BRANCH"
           fi
 
-          # Update version.json if this is the first release in the series
-          MAJOR_MINOR=$(echo "$VERSION" | sed 's/^\(v[0-9]*\.[0-9]*\).*/\1/')
-          CURRENT_VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "")
+          # Update version on release branch
+          update_version "$RELEASE_BRANCH" "$VERSION"
 
-          if [[ "$CURRENT_VERSION" != "$MAJOR_MINOR" ]]; then
-            echo "Updating version.json to $MAJOR_MINOR"
-            jq --arg version "$MAJOR_MINOR" '.version = $version' version.json > version.json.tmp
-            mv version.json.tmp version.json
-            git add version.json
-            git commit -s -m "Prepare release $VERSION"
-            git push origin "$RELEASE_BRANCH"
-            echo "Version updated and committed to release branch"
-          else
-            echo "Version $MAJOR_MINOR already present in release branch"
-          fi
-
-      - name: Cherry-pick version commit back to source branch
-        run: |
-          VERSION="${{ steps.branches.outputs.version }}"
-          RELEASE_BRANCH="${{ steps.branches.outputs.release_branch }}"
-          BASE_BRANCH="${{ steps.branches.outputs.base_branch }}"
-
-          # Find the version commit on the release branch
-          echo "Searching for version commit on $RELEASE_BRANCH"
-          git log --oneline "$RELEASE_BRANCH" | head -5
-          COMMIT_SHA=$(git log --format="%H %s" "$RELEASE_BRANCH" | grep "Prepare release $VERSION" | head -1 | cut -d' ' -f1)
-          echo "Found commit SHA: $COMMIT_SHA"
-          echo "Cherry-picking version commit $COMMIT_SHA from $RELEASE_BRANCH to $BASE_BRANCH"
-
-          # Switch to source branch and cherry-pick the version commit from release branch
+          # Update version on source branch
+          echo "Updating source branch $BASE_BRANCH"
           git checkout "$BASE_BRANCH"
           git pull origin "$BASE_BRANCH"
-
-          # Check if version commit already exists in source branch
-          if git log --format="%s" "$BASE_BRANCH" | grep -q "^Prepare release $VERSION$"; then
-            echo "Version commit already exists in $BASE_BRANCH, skipping cherry-pick"
-          else
-            git cherry-pick --strategy-option theirs "$COMMIT_SHA"
-            git push origin "$BASE_BRANCH"
-            echo "Version commit cherry-picked to $BASE_BRANCH"
-          fi
+          update_version "$BASE_BRANCH" "$VERSION"
 
           # Switch back to release branch for artifact creation
           git checkout "$RELEASE_BRANCH"
+
 
       - name: Create and sign release artifacts
         env:
