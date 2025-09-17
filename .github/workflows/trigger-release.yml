@@ -3,7 +3,7 @@ name: Trigger Release
 on:
   pull_request:
     types: [closed]
-    branches: [main, dev-v3]
+    branches: [release-*]
 
 jobs:
   trigger:

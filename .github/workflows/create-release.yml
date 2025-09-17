@@ -19,7 +19,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Extract version and setup release branch
+      - name: Extract version and checkout release branch
         id: version
         run: |
           TITLE="${{ github.event.client_payload.pr_title }}"
@@ -27,37 +27,41 @@ jobs:
           MAJOR=$(echo "$VERSION" | cut -d. -f1 | sed 's/v//')
           MINOR=$(echo "$VERSION" | cut -d. -f2)
           RELEASE_BRANCH="release-$MAJOR.$MINOR"
+          BASE_BRANCH="${{ github.event.client_payload.pr_base_ref }}"
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "base_branch=$BASE_BRANCH" >> $GITHUB_OUTPUT
 
-          # Create or checkout release branch (persistent across patch releases)
-          if ! git show-ref --verify --quiet refs/remotes/origin/"$RELEASE_BRANCH"; then
-            echo "Creating new release branch $RELEASE_BRANCH"
-            git checkout -b "$RELEASE_BRANCH"
-            git push -u origin "$RELEASE_BRANCH"
-          else
-            echo "Checking out existing release branch $RELEASE_BRANCH"
-            git checkout "$RELEASE_BRANCH"
-          fi
+          # Checkout existing release branch (should already exist from prepare-release)
+          echo "Checking out release branch $RELEASE_BRANCH"
+          git checkout "$RELEASE_BRANCH"
 
-      - name: Cherry-pick version commit
+      - name: Cherry-pick version commit back to source branch
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Find the actual commit (not merge commit) with exact subject line
-          COMMIT_SHA=$(git log --format="%H %s" "origin/${{ github.event.client_payload.pr_base_ref }}" | grep "^[a-f0-9]\{40\} Prepare release $VERSION$" | head -1 | cut -d' ' -f1)
-          echo "Cherry-picking version commit $COMMIT_SHA"
+          RELEASE_BRANCH="${{ steps.version.outputs.release_branch }}"
+          BASE_BRANCH="${{ steps.version.outputs.base_branch }}"
 
-          # Check if this version is already in version.json on the release branch
-          CURRENT_VERSION=$(jq -r '.version' version.json)
-          if [[ "$CURRENT_VERSION" == "$VERSION" ]]; then
-            echo "Version $VERSION is already present on release branch, skipping cherry-pick"
+          # Find the version commit on the release branch
+          COMMIT_SHA=$(git log --format="%H %s" "$RELEASE_BRANCH" | grep "^[a-f0-9]\{40\} Prepare release $VERSION$" | head -1 | cut -d' ' -f1)
+          echo "Cherry-picking version commit $COMMIT_SHA from $RELEASE_BRANCH to $BASE_BRANCH"
+
+          # Switch to source branch and cherry-pick the version commit from release branch
+          git checkout "$BASE_BRANCH"
+          git pull origin "$BASE_BRANCH"
+
+          # Check if version commit already exists in source branch
+          if git log --format="%s" "$BASE_BRANCH" | grep -q "^Prepare release $VERSION$"; then
+            echo "Version commit already exists in $BASE_BRANCH, skipping cherry-pick"
           else
-            # Cherry-pick using 'theirs' strategy to resolve conflicts by taking the new version
             git cherry-pick --strategy-option theirs "$COMMIT_SHA"
+            git push origin "$BASE_BRANCH"
+            echo "Version commit cherry-picked to $BASE_BRANCH"
           fi
 
-          git push origin "${{ steps.version.outputs.release_branch }}"
+          # Switch back to release branch for artifact creation
+          git checkout "$RELEASE_BRANCH"
 
       - name: Create and sign release artifacts
         env:

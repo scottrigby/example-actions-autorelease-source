@@ -15,11 +15,13 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Determine base branch
-        id: base
+      - name: Determine base and release branches
+        id: branches
         run: |
           VERSION="${{ inputs.version }}"
           MAJOR=$(echo "$VERSION" | cut -d. -f1 | sed 's/v//')
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          RELEASE_BRANCH="release-$MAJOR.$MINOR"
 
           if [ "$MAJOR" = "3" ]; then
             BASE_BRANCH="dev-v3"
@@ -28,30 +30,46 @@ jobs:
           fi
 
           echo "base_branch=$BASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.base.outputs.base_branch }}
+          fetch-depth: 0
 
       - name: Setup Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create temporary preparation branch
+      - name: Create or checkout release branch
         run: |
           VERSION="${{ inputs.version }}"
+          RELEASE_BRANCH="${{ steps.branches.outputs.release_branch }}"
+          BASE_BRANCH="${{ steps.branches.outputs.base_branch }}"
           TEMP_BRANCH="prepare-$VERSION"
+
+          # Create or checkout release branch (persistent across patch releases)
+          if ! git show-ref --verify --quiet refs/remotes/origin/"$RELEASE_BRANCH"; then
+            echo "Creating new release branch $RELEASE_BRANCH from $BASE_BRANCH"
+            git checkout -b "$RELEASE_BRANCH" origin/"$BASE_BRANCH"
+            git push -u origin "$RELEASE_BRANCH"
+          else
+            echo "Checking out existing release branch $RELEASE_BRANCH"
+            git checkout "$RELEASE_BRANCH"
+          fi
+
+          # Create temporary preparation branch from release branch
           git checkout -b "$TEMP_BRANCH"
           echo "branch=$TEMP_BRANCH" >> $GITHUB_ENV
 
       - name: Update version
         run: |
           VERSION="${{ inputs.version }}"
-          BUILD_DATE=$(date +%Y-%m-%d)
-          jq --arg version "$VERSION" --arg build "$BUILD_DATE" '.version = $version | .build = $build' version.json > version.json.tmp
+          # Extract MAJOR.MINOR (e.g., v4.0.1 -> v4.0)
+          MAJOR_MINOR=$(echo "$VERSION" | sed 's/^\(v[0-9]*\.[0-9]*\).*/\1/')
+          jq --arg version "$MAJOR_MINOR" '.version = $version' version.json > version.json.tmp
           mv version.json.tmp version.json
-          echo "Version updated to $VERSION"
+          echo "Version updated to $MAJOR_MINOR (extracted from $VERSION)"
 
       - name: Commit and push
         run: |
@@ -66,5 +84,5 @@ jobs:
           gh pr create \
             --title "Prepare release ${{ inputs.version }}" \
             --body "Automated release preparation for ${{ inputs.version }}" \
-            --base ${{ steps.base.outputs.base_branch }} \
+            --base ${{ steps.branches.outputs.release_branch }} \
             --head "${{ env.branch }}"
