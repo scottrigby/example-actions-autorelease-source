@@ -1,4 +1,4 @@
-name: Trigger Docs Update
+name: Update docs
 
 on:
   release:

@@ -17,7 +17,7 @@ This repository demonstrates automated release workflows with GPG signing and hu
 
 ## Usage
 
-1. Run ["Create Release" workflow](https://github.com/scottrigby/example-actions-autorelease-source/actions/workflows/release.yml) with target version
+1. Run ["Release" workflow](https://github.com/scottrigby/example-actions-autorelease-source/actions/workflows/release.yml) with target version
 2. Review and publish the draft release (created automatically)
 3. Documentation is automatically updated
 
