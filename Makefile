@@ -15,7 +15,7 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 container-build: ## Build verification container
-	@echo 'FROM alpine\nRUN apk add bash curl gnupg coreutils pwgen make\nWORKDIR /verify\nENTRYPOINT ["/bin/bash"]' | \
+	@echo 'FROM alpine\nRUN apk add bash curl gnupg coreutils make\nWORKDIR /verify\nENTRYPOINT ["/bin/bash"]' | \
 	$(CONTAINER_ENGINE) build -t $(CONTAINER_NAME) -f -
 
 container-run: container-build ## Run interactive container for testing
@@ -25,7 +25,7 @@ container-rm: ## Remove container image
 	-$(CONTAINER_ENGINE) rmi $(CONTAINER_NAME)
 
 generate-gpg-key: ## Generate GPG key pair non-interactively
-	@PASSPHRASE=$$(pwgen -s 24 1); \
+	@len=24; chars=({A..Z} {a..z} {0..9}); pass=""; for ((i=0;i<len;i++)); do pass+="$${chars[RANDOM%$${#chars[@]}]}"; done; PASSPHRASE="$$pass"; \
 	echo "$$PASSPHRASE" > passphrase.txt; \
 	echo -e "Key-Type: RSA\nKey-Length: 4096\nSubkey-Type: RSA\nSubkey-Length: 4096\nName-Real: Example Release Bot\nName-Email: releases@example.com\nExpire-Date: 0\nPassphrase: $$PASSPHRASE\n%commit\n%echo done" > keybatch; \
 	gpg --batch --pinentry-mode loopback --passphrase-file passphrase.txt --full-generate-key keybatch; \
