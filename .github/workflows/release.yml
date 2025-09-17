@@ -1,8 +1,12 @@
 name: Create Release
 
 on:
-  repository_dispatch:
-    types: [create-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v3.2.0, v4.0.1)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -19,26 +23,61 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Extract version and checkout release branch
-        id: version
+      - name: Determine base and release branches
+        id: branches
         run: |
-          VERSION="${{ github.event.client_payload.version }}"
-          RELEASE_BRANCH="${{ github.event.client_payload.release_branch }}"
-          BASE_BRANCH="${{ github.event.client_payload.base_branch }}"
+          VERSION="${{ inputs.version }}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1 | sed 's/v//')
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          RELEASE_BRANCH="release-$MAJOR.$MINOR"
+
+          if [ "$MAJOR" = "3" ]; then
+            BASE_BRANCH="dev-v3"
+          else
+            BASE_BRANCH="main"
+          fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
           echo "base_branch=$BASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "release_branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
 
-          # Checkout existing release branch (should already exist from prepare-release)
-          echo "Checking out release branch $RELEASE_BRANCH"
-          git checkout "$RELEASE_BRANCH"
+      - name: Create or checkout release branch and update version
+        run: |
+          VERSION="${{ steps.branches.outputs.version }}"
+          RELEASE_BRANCH="${{ steps.branches.outputs.release_branch }}"
+          BASE_BRANCH="${{ steps.branches.outputs.base_branch }}"
+
+          # Create or checkout release branch (persistent across patch releases)
+          if ! git show-ref --verify --quiet refs/remotes/origin/"$RELEASE_BRANCH"; then
+            echo "Creating new release branch $RELEASE_BRANCH from $BASE_BRANCH"
+            git checkout -b "$RELEASE_BRANCH" origin/"$BASE_BRANCH"
+            git push -u origin "$RELEASE_BRANCH"
+          else
+            echo "Checking out existing release branch $RELEASE_BRANCH"
+            git checkout "$RELEASE_BRANCH"
+          fi
+
+          # Update version.json if this is the first release in the series
+          MAJOR_MINOR=$(echo "$VERSION" | sed 's/^\(v[0-9]*\.[0-9]*\).*/\1/')
+          CURRENT_VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "")
+
+          if [[ "$CURRENT_VERSION" != "$MAJOR_MINOR" ]]; then
+            echo "Updating version.json to $MAJOR_MINOR"
+            jq --arg version "$MAJOR_MINOR" '.version = $version' version.json > version.json.tmp
+            mv version.json.tmp version.json
+            git add version.json
+            git commit -s -m "Prepare release $VERSION"
+            git push origin "$RELEASE_BRANCH"
+            echo "Version updated and committed to release branch"
+          else
+            echo "Version $MAJOR_MINOR already present in release branch"
+          fi
 
       - name: Cherry-pick version commit back to source branch
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          RELEASE_BRANCH="${{ steps.version.outputs.release_branch }}"
-          BASE_BRANCH="${{ steps.version.outputs.base_branch }}"
+          VERSION="${{ steps.branches.outputs.version }}"
+          RELEASE_BRANCH="${{ steps.branches.outputs.release_branch }}"
+          BASE_BRANCH="${{ steps.branches.outputs.base_branch }}"
 
           # Find the version commit on the release branch
           echo "Searching for version commit on $RELEASE_BRANCH"
@@ -68,7 +107,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.branches.outputs.version }}"
           make create-artifacts VERSION="$VERSION"
           make sign VERSION="$VERSION"
 
@@ -76,7 +115,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.branches.outputs.version }}"
 
           # Create annotated tag
           git tag --annotate "$VERSION" --message "Release $VERSION"

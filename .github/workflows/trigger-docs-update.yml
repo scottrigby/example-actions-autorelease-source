@@ -1,4 +1,4 @@
-name: Release Published
+name: Trigger Docs Update
 
 on:
   release:
