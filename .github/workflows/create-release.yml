@@ -41,7 +41,10 @@ jobs:
           BASE_BRANCH="${{ steps.version.outputs.base_branch }}"
 
           # Find the version commit on the release branch
-          COMMIT_SHA=$(git log --format="%H %s" "$RELEASE_BRANCH" | grep "^[a-f0-9]\{40\} Prepare release $VERSION$" | head -1 | cut -d' ' -f1)
+          echo "Searching for version commit on $RELEASE_BRANCH"
+          git log --oneline "$RELEASE_BRANCH" | head -5
+          COMMIT_SHA=$(git log --format="%H %s" "$RELEASE_BRANCH" | grep "Prepare release $VERSION" | head -1 | cut -d' ' -f1)
+          echo "Found commit SHA: $COMMIT_SHA"
           echo "Cherry-picking version commit $COMMIT_SHA from $RELEASE_BRANCH to $BASE_BRANCH"
 
           # Switch to source branch and cherry-pick the version commit from release branch
