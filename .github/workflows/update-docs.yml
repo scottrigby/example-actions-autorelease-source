@@ -1,0 +1,20 @@
+name: Update docs
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  trigger-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger docs update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          repository: ${{ github.repository_owner }}/example-actions-autorelease-docs
+          event-type: version-released
+          client-payload: |
+            {
+              "version": "${{ github.event.release.tag_name }}"
+            }
