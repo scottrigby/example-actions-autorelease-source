@@ -41,12 +41,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create or checkout release branch
+      - name: Create or checkout release branch and update version
         run: |
           VERSION="${{ inputs.version }}"
           RELEASE_BRANCH="${{ steps.branches.outputs.release_branch }}"
           BASE_BRANCH="${{ steps.branches.outputs.base_branch }}"
-          TEMP_BRANCH="prepare-$VERSION"
 
           # Create or checkout release branch (persistent across patch releases)
           if ! git show-ref --verify --quiet refs/remotes/origin/"$RELEASE_BRANCH"; then
@@ -58,31 +57,31 @@ jobs:
             git checkout "$RELEASE_BRANCH"
           fi
 
-          # Create temporary preparation branch from release branch
-          git checkout -b "$TEMP_BRANCH"
-          echo "branch=$TEMP_BRANCH" >> $GITHUB_ENV
-
-      - name: Update version
-        run: |
-          VERSION="${{ inputs.version }}"
-          # Extract MAJOR.MINOR (e.g., v4.0.1 -> v4.0)
+          # Update version.json if this is the first release in the series
           MAJOR_MINOR=$(echo "$VERSION" | sed 's/^\(v[0-9]*\.[0-9]*\).*/\1/')
-          jq --arg version "$MAJOR_MINOR" '.version = $version' version.json > version.json.tmp
-          mv version.json.tmp version.json
-          echo "Version updated to $MAJOR_MINOR (extracted from $VERSION)"
+          CURRENT_VERSION=$(jq -r '.version' version.json 2>/dev/null || echo "")
 
-      - name: Commit and push
-        run: |
-          git add .
-          git commit -s -m "Prepare release ${{ inputs.version }}"
-          git push origin "${{ env.branch }}"
+          if [[ "$CURRENT_VERSION" != "$MAJOR_MINOR" ]]; then
+            echo "Updating version.json to $MAJOR_MINOR"
+            jq --arg version "$MAJOR_MINOR" '.version = $version' version.json > version.json.tmp
+            mv version.json.tmp version.json
+            git add version.json
+            git commit -s -m "Prepare release $VERSION"
+            git push origin "$RELEASE_BRANCH"
+            echo "Version updated and committed to release branch"
+          else
+            echo "Version $MAJOR_MINOR already present in release branch"
+          fi
 
-      - name: Create PR
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          gh pr create \
-            --title "Prepare release ${{ inputs.version }}" \
-            --body "Automated release preparation for ${{ inputs.version }}" \
-            --base ${{ steps.branches.outputs.release_branch }} \
-            --head "${{ env.branch }}"
+      - name: Trigger release workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          repository: ${{ github.repository }}
+          event-type: create-release
+          client-payload: |
+            {
+              "version": "${{ inputs.version }}",
+              "release_branch": "${{ steps.branches.outputs.release_branch }}",
+              "base_branch": "${{ steps.branches.outputs.base_branch }}"
+            }

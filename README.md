@@ -18,13 +18,12 @@ This repository demonstrates automated release workflows with GPG signing and hu
 ## Usage
 
 1. Run ["Prepare Release" workflow](https://github.com/scottrigby/example-actions-autorelease-source/actions/workflows/prepare-release.yml) with target version
-2. Review and merge the generated PR
-3. Review and publish the draft release
-4. Documentation is automatically updated
+2. Review and publish the draft release (created automatically)
+3. Documentation is automatically updated
 
 ## How It Works
 
-- **Human review gates**: All changes require PR approval
+- **Manual trigger**: Maintainers initiate releases via workflow dispatch
 - **GPG signed artifacts**: All releases are cryptographically signed
 - **Draft releases**: Created for review before triggering docs
 - **Cross-repo automation**: Automatically updates documentation
