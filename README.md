@@ -5,14 +5,15 @@ This repository demonstrates automated release workflows with GPG signing and hu
 ## GitHub Actions Setup
 
 1. **Generate GPG key**: Run `make container-run` then `make generate-gpg-key` inside the container
-2. **Copy private key**: Copy contents of `private-key.asc` to GitHub repository secret `GPG_PRIVATE_KEY`
-3. **Copy passphrase**: Copy contents of `passphrase.txt` to GitHub repository secret `GPG_PASSPHRASE`
-4. **Create release token**: [Fine-grained Personal Access Token](https://github.com/settings/personal-access-tokens/new) with permissions:
+2. **Commit public key**: The make target adds the public key to the KEYS file - commit and push this change
+3. **Copy private key**: Copy contents of `private-key.asc` to GitHub repository secret `GPG_PRIVATE_KEY`
+4. **Copy passphrase**: Copy contents of `passphrase.txt` to GitHub repository secret `GPG_PASSPHRASE`
+5. **Create release token**: [Fine-grained Personal Access Token](https://github.com/settings/personal-access-tokens/new) with permissions:
    - Contents: Read/Write
    - Pull requests: Write
    - Metadata: Read
    - Actions: Write
-5. **Add token**: Save token as `RELEASE_TOKEN` repository secret
+6. **Add token**: Save token as `RELEASE_TOKEN` repository secret
 
 ## Usage
 
